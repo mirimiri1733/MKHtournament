@@ -26,8 +26,6 @@ initial_extensions = ['cogs.TournamentManager', 'cogs.Tables',
                       'cogs.Registration', 'cogs.Results',
                       'cogs.TeamManagement']
 
-with open('config.json', 'r') as cjson:
-    bot.config = json.load(cjson)
 
 if path.exists('tournament_data.pkl'):
     with open('tournament_data.pkl', 'rb') as backupFile:
