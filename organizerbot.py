@@ -8,8 +8,6 @@ import os
 from dotenv import load_dotenv
 
 
-
-
 import dill as pickle
 from os import path
 
