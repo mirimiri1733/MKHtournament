@@ -14,6 +14,8 @@ from os import path
 # .envファイルの内容を読み込見込む
 load_dotenv()
 
+
+
 logging.basicConfig(level=logging.INFO)
 intents = discord.Intents.default()
 intents.members = True
