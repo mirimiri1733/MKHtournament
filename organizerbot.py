@@ -16,6 +16,8 @@ load_dotenv()
 
 
 
+
+
 logging.basicConfig(level=logging.INFO)
 intents = discord.Intents.default()
 intents.members = True
