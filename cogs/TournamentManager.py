@@ -9,10 +9,24 @@ import aiohttp
 import asyncio
 import math
 
+
+import json
+import logging
+import aiofiles
+import os
+from dotenv import load_dotenv
+import dill as pickle
+from os import path
+from lounge_api import get_player
+from typing import Optional
+
+
 class TournamentManager(commands.Cog):
     def __init__ (self, bot):
         self.bot = bot
         self._progress_task = self.update_progress_channels.start()
+
+
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
@@ -569,6 +583,110 @@ class TournamentManager(commands.Cog):
                 await ctx.send("invalid room number")
                 return
         await common.printRooms(ctx, tournament.print_format, rooms, roomnum)
+
+
+    @commands.command(aliases=['rm'])
+    async def roommmr(self, ctx, roomnum=0):
+        if ctx.guild.id not in ctx.bot.tournaments:
+            await ctx.send("no tournament started yet")
+            return
+        tournament = ctx.bot.tournaments[ctx.guild.id]
+        if await has_organizer_role(ctx, tournament) is False:
+            return
+        currentRound = tournament.currentRound()
+        if currentRound is None:
+            await ctx.send("There are currently no rounds in the tournament; use `!nextRound`")
+            return
+        rngd = currentRound.randomized
+        if rngd is False:
+            await ctx.send("Rooms have not been created yet; use `!makeRooms` / `!mr`")
+            return
+        rooms = currentRound.rooms
+        if roomnum > 0:
+            if roomnum > len(rooms):
+                await ctx.send("invalid room number")
+                return
+    
+        fc_groups = []
+        current_group = []
+        for room in rooms:
+            for team in room.teams:
+                for player in team.players:
+                    current_group.append(player.fc)
+                    if len(current_group) >= 12:
+                        fc_groups.append(current_group)
+                        current_group = []
+    
+        if current_group:
+            fc_groups.append(current_group)
+    
+        for i, fc_group in enumerate(fc_groups):
+            await self.printfc(ctx, fc_group, roomnum=i+1)
+
+    async def printfc(self, ctx, fc_list, roomnum=0):
+        mmr_values = []
+        mmr_results = []
+        for fc in fc_list:
+            player = await get_player(fc=fc.strip())
+            if player is not None and player.mmr is not None:
+                mmr_values.append(player.mmr)
+                mmr_results.append(f"{player.name}: {player.mmr}")
+            else:
+                mmr_results.append(f"{fc.strip()} not found!")
+
+        if len(mmr_values) == 0:
+            await ctx.send("No MMR data found for the given FCs.")
+            return
+
+        average_mmr = sum(mmr_values) / len(mmr_values)
+    
+        if average_mmr >= 15000:
+            rank = "Grandmaster"
+        elif average_mmr >= 14000:
+            rank = "Master"
+        elif average_mmr >= 13000:
+            rank = "Diamond 2"
+        elif average_mmr >= 12000:
+            rank = "Diamond 1"
+        elif average_mmr >= 11000:
+            rank = "Sapphire 2"
+        elif average_mmr >= 10000:
+            rank = "Sapphire 1"
+        elif average_mmr >= 9000:
+            rank = "Platinum 2"
+        elif average_mmr >= 8000:
+            rank = "Platinum 1"
+        elif average_mmr >= 7000:
+            rank = "Gold 2"
+        elif average_mmr >= 6000:
+            rank = "Gold 1"
+        elif average_mmr >= 5000:
+            rank = "Silver 2"
+        elif average_mmr >= 4000:
+            rank = "Silver 1"
+        elif average_mmr >= 3000:
+            rank = "Bronze 2"
+        elif average_mmr >= 2000:
+            rank = "Bronze 1"
+        elif average_mmr >= 1000:
+            rank = "Iron 2"
+        else:
+            rank = "Iron 1"
+        
+        mmr_results.append(f"Average MMR: {average_mmr}")
+        mmr_results.append(f"Rank: {rank}")
+
+        if roomnum > 0:
+            await ctx.send(f"```\n{roomnum}組\n" + "\n".join(mmr_results) + "\n```")
+        else:
+            await ctx.send("\n".join(mmr_results))
+
+
+
+
+
+   
+
         
     @commands.command()
     async def deleteRooms(self, ctx):
